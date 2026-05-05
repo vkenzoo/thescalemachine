@@ -1,0 +1,36 @@
+project_id = "ad-manager"
+
+[api]
+enabled = true
+port = 54321
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = [
+  "http://localhost:3000/auth/callback",
+  "https://localhost:3000/auth/callback",
+]
+jwt_expiry = 3600
+enable_signup = true
+enable_anonymous_sign_ins = false
+
+[auth.email]
+enable_signup = true
+enable_confirmations = true   # Confirma e-mail antes de logar (em prod). Em dev você pode desativar.
+double_confirm_changes = true
+secure_password_change = true
+
+# Templates personalizados de e-mail (PT-BR) — quando subir pra produção, sobrescreve via Dashboard.
+[auth.email.template.confirmation]
+subject = "Confirme seu e-mail no Ad Manager"
+content_path = "./supabase/templates/confirmation.html"
