@@ -11,6 +11,14 @@ import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/toast";
 
 export default function LoginPage() {
+  return (
+    <React.Suspense fallback={null}>
+      <LoginInner />
+    </React.Suspense>
+  );
+}
+
+function LoginInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { push } = useToast();
