@@ -6,6 +6,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { AccountSwitcher } from "@/components/gerenciador/account-switcher";
 import { AttributedSalesBar } from "@/components/integracoes/attributed-sales-bar";
 import { ApplyUtmsButton } from "@/components/gerenciador/apply-utms-button";
+import { useCustomMetrics } from "@/lib/hooks/use-custom-metrics";
+import { evalFormula } from "@/lib/formula";
 import { PeriodPicker } from "@/components/gerenciador/period-picker";
 import { MetricCards } from "@/components/gerenciador/metric-cards";
 import { FilterBar } from "@/components/gerenciador/filter-bar";
@@ -172,6 +174,9 @@ export default function GerenciadorPage() {
     };
   }, [filteredCampaigns]);
 
+  // Custom metrics do user (formulas)
+  const { metrics: customMetrics } = useCustomMetrics();
+
   // Constrói cards dinamicamente baseado em selected_metrics do user
   const selectedMetricIds = preferences?.selected_metrics ?? ["spend", "revenue", "roas", "purchases", "cpa", "ctr"];
   const metricCards = React.useMemo(() => {
@@ -200,11 +205,59 @@ export default function GerenciadorPage() {
       checkouts:  { label: "Checkouts",     value: num(filteredCampaigns.reduce((s, c) => s + c.checkouts, 0)) },
       cp_checkout:{ label: "Custo/Checkout", value: filteredCampaigns.reduce((s, c) => s + c.checkouts, 0) ? brl(totals.spend / filteredCampaigns.reduce((s, c) => s + c.checkouts, 0)) : "—" },
     };
+    // Adiciona métricas personalizadas no map (id é cm.key, ex: cm_lucro)
+    const sumOf = (k: keyof typeof totals) => totals[k];
+    const sumField = (field: keyof typeof filteredCampaigns[number]) =>
+      filteredCampaigns.reduce((s, c) => s + (Number(c[field]) || 0), 0);
+
+    // Scope com TODAS as variáveis suportadas pelas fórmulas
+    const scope: Record<string, number> = {
+      spend: totals.spend,
+      revenue: totals.revenue,
+      purchases: totals.purchases,
+      impressions: totals.impressions,
+      reach: sumField("reach"),
+      clicks: totals.clicks,
+      ctr: totals.ctr,
+      cpc: totals.cpc,
+      cpm: filteredCampaigns.length ? filteredCampaigns.reduce((s, c) => s + c.cpm, 0) / filteredCampaigns.length : 0,
+      cpa: totals.cpa,
+      roas: totals.roas,
+      leads: sumField("leads"),
+      cpl: sumField("leads") > 0 ? totals.spend / sumField("leads") : 0,
+      cart_adds: sumField("cartAdds"),
+      cp_cart: sumField("cartAdds") > 0 ? totals.spend / sumField("cartAdds") : 0,
+      checkouts: sumField("checkouts"),
+      cp_checkout: sumField("checkouts") > 0 ? totals.spend / sumField("checkouts") : 0,
+      messages: sumField("messages"),
+      cp_message: sumField("messages") > 0 ? totals.spend / sumField("messages") : 0,
+      ig_visits: sumField("igVisits"),
+      cp_ig_visit: sumField("igVisits") > 0 ? totals.spend / sumField("igVisits") : 0,
+      budget: filteredCampaigns.reduce((s, c) => s + (c.dailyBudget || 0), 0),
+      frequency: filteredCampaigns.length ? filteredCampaigns.reduce((s, c) => s + c.frequency, 0) / filteredCampaigns.length : 0,
+    };
+
+    for (const cm of customMetrics) {
+      try {
+        const v = evalFormula(cm.formula, scope);
+        let formatted = "—";
+        if (isFinite(v)) {
+          if (cm.format === "currency") formatted = brl(v);
+          else if (cm.format === "percent") formatted = pct(v);
+          else if (cm.format === "ratio") formatted = v.toFixed(2) + "×";
+          else formatted = num(Math.round(v));
+        }
+        map[cm.key] = { label: cm.label, value: formatted };
+      } catch {
+        map[cm.key] = { label: cm.label, value: "—" };
+      }
+    }
+
     return selectedMetricIds
       .map((id) => map[id])
       .filter(Boolean)
       .map((m) => ({ ...m, delta: 0, spark: [] }));
-  }, [selectedMetricIds, totals, filteredCampaigns]);
+  }, [selectedMetricIds, totals, filteredCampaigns, customMetrics]);
 
   const handleSaveMetrics = async (ids: string[]) => {
     try {

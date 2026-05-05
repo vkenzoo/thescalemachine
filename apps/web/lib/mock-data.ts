@@ -48,12 +48,13 @@ export const METRICS: MetricDef[] = [
   { id: "cp_ig_visit", label: "Custo por Visita IG", category: "instagram", format: "currency", goodIsUp: false },
 ];
 
-export const METRIC_CATEGORY_LABELS: Record<MetricDef["category"], string> = {
+export const METRIC_CATEGORY_LABELS: Record<string, string> = {
   core: "Métricas principais",
   conversion: "Conversão e funil",
   engagement: "Engajamento",
   messaging: "Mensagens e WhatsApp",
   instagram: "Instagram",
+  custom: "Personalizadas (suas)",
 };
 
 // ============================================================

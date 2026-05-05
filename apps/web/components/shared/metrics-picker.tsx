@@ -1,7 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { Search } from "lucide-react";
+import { Search, Calculator, Plus } from "lucide-react";
+import { useCustomMetrics } from "@/lib/hooks/use-custom-metrics";
+import { CustomMetricsModal } from "@/components/shared/custom-metrics-modal";
 import {
   Dialog,
   DialogContent,
@@ -37,22 +39,36 @@ export function MetricsPicker({
   const [selected, setSelected] = React.useState<Set<string>>(
     new Set(defaultSelected ?? ["spend", "revenue", "roas", "purchases", "cpa", "ctr"])
   );
+  const [customOpen, setCustomOpen] = React.useState(false);
+
+  const { metrics: customMetrics } = useCustomMetrics();
 
   React.useEffect(() => {
     if (open) setSelected(new Set(defaultSelected ?? ["spend", "revenue", "roas", "purchases", "cpa", "ctr"]));
   }, [open, defaultSelected]);
 
+  // Combina built-in + custom (custom usa categoria virtual "custom")
+  const allMetrics: (MetricDef & { isCustom?: boolean })[] = React.useMemo(() => [
+    ...METRICS,
+    ...customMetrics.map((c) => ({
+      id: c.key, label: c.label, format: c.format,
+      category: "custom" as any,
+      goodIsUp: c.good_is_up,
+      isCustom: true,
+    })),
+  ], [customMetrics]);
+
   const filtered = React.useMemo(
-    () => METRICS.filter((m) => m.label.toLowerCase().includes(query.toLowerCase())),
-    [query]
+    () => allMetrics.filter((m) => m.label.toLowerCase().includes(query.toLowerCase())),
+    [allMetrics, query]
   );
 
   const grouped = React.useMemo(() => {
-    const map = new Map<MetricDef["category"], MetricDef[]>();
+    const map = new Map<string, typeof allMetrics>();
     for (const m of filtered) {
-      const arr = map.get(m.category) ?? [];
+      const arr = map.get(m.category as any) ?? [];
       arr.push(m);
-      map.set(m.category, arr);
+      map.set(m.category as any, arr);
     }
     return map;
   }, [filtered]);
@@ -91,6 +107,15 @@ export function MetricsPicker({
                 className="pl-8 h-8 text-xs"
               />
             </div>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setCustomOpen(true)}
+              className="h-8"
+            >
+              <Calculator className="size-3.5 mr-1" />
+              {customMetrics.length > 0 ? `Personalizadas (${customMetrics.length})` : "Criar personalizada"}
+            </Button>
             <Badge tone={remaining === 0 ? "warning" : "neutral"} size="sm">
               {selected.size}/{MAX} selecionadas
             </Badge>
@@ -142,6 +167,11 @@ export function MetricsPicker({
             Aplicar ({selected.size})
           </Button>
         </DialogFooter>
+
+        <CustomMetricsModal
+          open={customOpen}
+          onOpenChange={setCustomOpen}
+        />
       </DialogContent>
     </Dialog>
   );
