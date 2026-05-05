@@ -46,7 +46,7 @@ export async function updateSession(request: NextRequest) {
 
   const path = request.nextUrl.pathname;
 
-  // Rotas públicas (sem auth): tudo em (auth) + landing pages legais
+  // Rotas públicas (sem auth): tudo em (auth) + landing pages legais + assets públicos
   const isPublic =
     path.startsWith("/login") ||
     path.startsWith("/signup") ||
@@ -54,9 +54,10 @@ export async function updateSession(request: NextRequest) {
     path.startsWith("/reset") ||
     path.startsWith("/terms") ||
     path.startsWith("/privacy") ||
-    path.startsWith("/r/") ||      // relatórios públicos compartilhados
-    path.startsWith("/auth/") ||   // callbacks OAuth do Supabase
-    path === "/";                  // se quiser landing page futura
+    path.startsWith("/r/") ||           // relatórios públicos compartilhados
+    path.startsWith("/auth/") ||        // callbacks OAuth do Supabase
+    path.startsWith("/utms/") ||        // /utms/latest.js — usuário cola na landing dele
+    path === "/";                       // se quiser landing page futura
 
   // Sem usuário tentando acessar rota privada → redireciona pra /login
   if (!user && !isPublic && !path.startsWith("/_next") && !path.startsWith("/api/")) {
