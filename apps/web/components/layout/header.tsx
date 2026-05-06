@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/dropdown";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/cn";
+import { MyAccountModal } from "@/components/shared/my-account-modal";
 
 // Mapeia rota → (categoria, título). Centralizado pra um lugar.
 const ROUTE_META: Record<string, { breadcrumb: string; title: string }> = {
@@ -338,33 +339,66 @@ function relativeTime(iso: string): string {
 }
 
 function UserMenu() {
+  const [accountOpen, setAccountOpen] = React.useState(false);
+  const [user, setUser] = React.useState<{ email: string; name: string | null } | null>(null);
+
+  React.useEffect(() => {
+    fetch("/api/me").then((r) => r.json()).then((j) => {
+      if (j.user) setUser(j.user);
+    }).catch(() => {});
+  }, []);
+
+  const initials = (user?.name ?? user?.email ?? "VK")
+    .split(/[ @]/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((s) => s[0]?.toUpperCase() ?? "")
+    .join("");
+
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          className="flex items-center gap-2 h-8 px-1.5 pr-2 rounded-md hover:bg-bg-elevated transition-colors cursor-pointer"
-        >
-          <div className="size-6 rounded-full bg-accent-subtle text-accent text-2xs font-bold grid place-items-center font-mono">
-            VK
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            className="flex items-center gap-2 h-8 px-1.5 pr-2 rounded-md hover:bg-bg-elevated transition-colors cursor-pointer"
+          >
+            <div className="size-6 rounded-full bg-accent-subtle text-accent text-2xs font-bold grid place-items-center font-mono">
+              {initials || "VK"}
+            </div>
+            <ChevronDown className="size-3 text-ink-dim" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          <div className="px-2.5 pt-2 pb-3">
+            <div className="text-sm font-medium text-ink truncate">{user?.name ?? "Carregando…"}</div>
+            <div className="text-2xs text-ink-dim mt-0.5 truncate">{user?.email ?? ""}</div>
           </div>
-          <ChevronDown className="size-3 text-ink-dim" />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
-        <div className="px-2.5 pt-2 pb-3">
-          <div className="text-sm font-medium text-ink">Vinny Kenzo</div>
-          <div className="text-2xs text-ink-dim mt-0.5">vinnykenzo@gmail.com</div>
-        </div>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem><Settings />Minha Conta</DropdownMenuItem>
-        <DropdownMenuItem><CreditCard />Assinatura<DropdownMenuShortcut>PRO</DropdownMenuShortcut></DropdownMenuItem>
-        <DropdownMenuItem><HelpCircle />Ajuda e suporte</DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem className="text-negative focus:text-negative focus:bg-negative-subtle">
-          <LogOut />Sair
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onSelect={() => setAccountOpen(true)}>
+            <Settings />Minha Conta
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/billing">
+              <CreditCard />Assinatura
+              <DropdownMenuShortcut>PRO</DropdownMenuShortcut>
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <a href="https://wa.me/5511999999999?text=Preciso%20de%20ajuda%20com%20o%20Ad%20Manager" target="_blank" rel="noreferrer">
+              <HelpCircle />Ajuda e suporte
+            </a>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem asChild className="text-negative focus:text-negative focus:bg-negative-subtle">
+            <Link href="/logout">
+              <LogOut />Sair
+            </Link>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <MyAccountModal open={accountOpen} onOpenChange={setAccountOpen} />
+    </>
   );
 }
