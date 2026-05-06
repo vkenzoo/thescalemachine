@@ -76,14 +76,16 @@ export default function GerenciadorPage() {
   const { accounts, isLoading: accLoading, error: accError } = useMetaAccounts();
   const [selectedAccount, setSelectedAccount] = React.useState<MetaAccount | null>(null);
   const [period, setPeriod] = React.useState<Period>("last_30d");
+  const [compare, setCompare] = React.useState(false);
 
   const accountId = selectedAccount?.account_id ?? null;
   const {
     campaigns,
+    previousCampaigns,
     isLoading: campLoading,
     error: campError,
     refresh: refreshCampaigns,
-  } = useMetaCampaigns(accountId, period);
+  } = useMetaCampaigns(accountId, period, { compareWithPrevious: compare });
   const {
     adsets,
     isLoading: adsetsLoading,
@@ -194,6 +196,35 @@ export default function GerenciadorPage() {
     };
   }, [filteredCampaigns]);
 
+  // Totais do período anterior (pra comparação)
+  const previousTotals = React.useMemo(() => {
+    if (!compare || previousCampaigns.length === 0) return null;
+    const t = previousCampaigns.reduce(
+      (acc, r) => {
+        acc.spend += r.spend;
+        acc.purchases += r.purchases;
+        acc.revenue += r.revenue;
+        acc.clicks += r.clicks;
+        acc.impressions += r.impressions;
+        return acc;
+      },
+      { spend: 0, purchases: 0, revenue: 0, clicks: 0, impressions: 0 }
+    );
+    return {
+      ...t,
+      cpa: t.purchases ? t.spend / t.purchases : 0,
+      roas: t.spend ? t.revenue / t.spend : 0,
+      ctr: t.impressions ? t.clicks / t.impressions : 0,
+      cpc: t.clicks ? t.spend / t.clicks : 0,
+    };
+  }, [compare, previousCampaigns]);
+
+  // Helper: delta percentual (+1.0 = subiu 100%)
+  const deltaOf = (current: number, prev: number | undefined): number | undefined => {
+    if (prev === undefined || prev === 0) return undefined;
+    return (current - prev) / prev;
+  };
+
   // Custom metrics do user (formulas)
   const { metrics: customMetrics } = useCustomMetrics();
 
@@ -212,17 +243,17 @@ export default function GerenciadorPage() {
   // Constrói cards dinamicamente baseado em selected_metrics do user
   const selectedMetricIds = preferences?.selected_metrics ?? ["spend", "revenue", "roas", "purchases", "cpa", "ctr"];
   const metricCards = React.useMemo(() => {
-    const map: Record<string, { label: string; value: string }> = {
-      spend:      { label: "Investido",     value: brl(totals.spend) },
+    const map: Record<string, { label: string; value: string; delta?: number; goodIsUp?: boolean }> = {
+      spend:      { label: "Investido",     value: brl(totals.spend), delta: deltaOf(totals.spend, previousTotals?.spend), goodIsUp: undefined },
       budget:     { label: "Orçamento",     value: brl(filteredCampaigns.reduce((s, c) => s + (c.dailyBudget || 0), 0)) },
-      revenue:    { label: "Receita Pixel", value: brlCompact(totals.revenue) },
+      revenue:    { label: "Receita Pixel", value: brlCompact(totals.revenue), delta: deltaOf(totals.revenue, previousTotals?.revenue), goodIsUp: true },
       utm_revenue:{ label: "Receita UTM",   value: utmRevenue > 0 ? brlCompact(utmRevenue) : "—" },
-      roas:       { label: "ROAS Pixel",    value: totals.roas.toFixed(2) + "×" },
+      roas:       { label: "ROAS Pixel",    value: totals.roas.toFixed(2) + "×", delta: deltaOf(totals.roas, previousTotals?.roas), goodIsUp: true },
       utm_roas:   { label: "ROAS UTM",      value: totals.spend > 0 && utmRevenue > 0 ? (utmRevenue / totals.spend).toFixed(2) + "×" : "—" },
-      purchases:  { label: "Compras",       value: num(totals.purchases) },
-      cpa:        { label: "Custo/Compra",  value: totals.cpa ? brl(totals.cpa) : "—" },
-      ctr:        { label: "CTR",           value: pct(totals.ctr) },
-      cpc:        { label: "CPC",           value: totals.cpc ? brl(totals.cpc) : "—" },
+      purchases:  { label: "Compras",       value: num(totals.purchases), delta: deltaOf(totals.purchases, previousTotals?.purchases), goodIsUp: true },
+      cpa:        { label: "Custo/Compra",  value: totals.cpa ? brl(totals.cpa) : "—", delta: deltaOf(totals.cpa, previousTotals?.cpa), goodIsUp: false },
+      ctr:        { label: "CTR",           value: pct(totals.ctr), delta: deltaOf(totals.ctr, previousTotals?.ctr), goodIsUp: true },
+      cpc:        { label: "CPC",           value: totals.cpc ? brl(totals.cpc) : "—", delta: deltaOf(totals.cpc, previousTotals?.cpc), goodIsUp: false },
       cpm:        { label: "CPM",           value: filteredCampaigns.length ? brl(filteredCampaigns.reduce((s, c) => s + c.cpm, 0) / filteredCampaigns.length) : "—" },
       clicks:     { label: "Cliques",       value: num(totals.clicks) },
       impressions:{ label: "Impressões",    value: num(totals.impressions) },
@@ -290,8 +321,8 @@ export default function GerenciadorPage() {
     return selectedMetricIds
       .map((id) => map[id])
       .filter(Boolean)
-      .map((m) => ({ ...m, delta: 0, spark: [] }));
-  }, [selectedMetricIds, totals, filteredCampaigns, customMetrics, utmRevenue]);
+      .map((m) => ({ ...m, spark: [] }));
+  }, [selectedMetricIds, totals, filteredCampaigns, customMetrics, utmRevenue, previousTotals]);
 
   const handleSaveMetrics = async (ids: string[]) => {
     try {
@@ -688,6 +719,19 @@ export default function GerenciadorPage() {
             status={selectedAccount?.connection_status ?? "active"}
           />
           <PeriodPicker value={period} onChange={setPeriod} />
+          <button
+            type="button"
+            onClick={() => setCompare((v) => !v)}
+            className={`h-8 px-2.5 inline-flex items-center gap-2 rounded-md border text-xs font-medium transition-colors cursor-pointer ${
+              compare
+                ? "border-accent bg-accent-subtle text-accent"
+                : "border-line bg-bg-surface text-ink-muted hover:border-line-strong hover:text-ink"
+            }`}
+            title="Mostrar variação vs período anterior equivalente"
+          >
+            <span className={compare ? "text-accent" : "text-ink-dim"}>↕</span>
+            Comparar
+          </button>
         </div>
       </div>
 

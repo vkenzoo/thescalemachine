@@ -54,6 +54,49 @@ const PERIOD_MAP: Record<string, string> = {
   maximum: "maximum",
 };
 
+/**
+ * Pra cada period, calcula o time_range do período ANTERIOR equivalente
+ * (mesma duração, deslocada pra trás). Retorna { since, until } em YYYY-MM-DD.
+ */
+function previousRange(period: string): { since: string; until: string } {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+
+  const day = (d: Date, days: number) => {
+    const out = new Date(d);
+    out.setDate(out.getDate() + days);
+    return out;
+  };
+
+  if (period === "today") {
+    const y = day(today, -1);
+    return { since: fmt(y), until: fmt(y) };
+  }
+  if (period === "yesterday") {
+    const y = day(today, -2);
+    return { since: fmt(y), until: fmt(y) };
+  }
+  if (period === "last_7d") {
+    return { since: fmt(day(today, -14)), until: fmt(day(today, -8)) };
+  }
+  if (period === "last_30d") {
+    return { since: fmt(day(today, -60)), until: fmt(day(today, -31)) };
+  }
+  if (period === "this_month") {
+    const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
+    const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    return { since: fmt(lastMonthStart), until: fmt(lastMonthEnd) };
+  }
+  if (period === "last_month") {
+    const start = new Date(today.getFullYear(), today.getMonth() - 2, 1);
+    const end = new Date(today.getFullYear(), today.getMonth() - 1, 0);
+    return { since: fmt(start), until: fmt(end) };
+  }
+  // maximum: usa últimos 365d como "anterior"
+  return { since: fmt(day(today, -730)), until: fmt(day(today, -366)) };
+}
+
 export async function GET(req: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -62,6 +105,7 @@ export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const accountParam = url.searchParams.get("account");
   const period = PERIOD_MAP[url.searchParams.get("period") ?? "last_30d"] ?? "last_30d";
+  const usePrevious = url.searchParams.get("previous") === "1";
 
   if (!accountParam) {
     return NextResponse.json({ error: "missing_account" }, { status: 400 });
@@ -93,7 +137,12 @@ export async function GET(req: NextRequest) {
         fields: "id,name,status,objective,daily_budget,lifetime_budget,buying_type,bid_strategy,created_time,updated_time",
         limit: 500,
       }, appSecret),
-      graphGet<{ data: MetaInsight[] }>(token, `/${adAccount.account_id}/insights`, {
+      graphGet<{ data: MetaInsight[] }>(token, `/${adAccount.account_id}/insights`, usePrevious ? {
+        level: "campaign",
+        time_range: JSON.stringify(previousRange(period)),
+        fields: "campaign_id,spend,impressions,reach,clicks,ctr,cpc,cpm,frequency,actions,action_values",
+        limit: 500,
+      } : {
         level: "campaign",
         date_preset: period,
         fields: "campaign_id,spend,impressions,reach,clicks,ctr,cpc,cpm,frequency,actions,action_values",

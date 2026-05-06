@@ -78,15 +78,26 @@ export interface MetaCampaignRow {
 
 export type Period = "today" | "yesterday" | "last_7d" | "last_30d" | "this_month" | "last_month" | "maximum";
 
-export function useMetaCampaigns(accountId: string | null, period: Period = "last_30d") {
+export function useMetaCampaigns(
+  accountId: string | null,
+  period: Period = "last_30d",
+  options: { compareWithPrevious?: boolean } = {}
+) {
   const key = accountId ? `/api/meta/campaigns?account=${accountId}&period=${period}` : null;
+  const prevKey = accountId && options.compareWithPrevious
+    ? `/api/meta/campaigns?account=${accountId}&period=${period}&previous=1`
+    : null;
+
   const { data, error, isLoading, isValidating, mutate: refresh } = useSWR<{ campaigns: MetaCampaignRow[] }>(
-    key,
-    fetcher,
-    SWR_CONFIG
+    key, fetcher, SWR_CONFIG
   );
+  const { data: prevData } = useSWR<{ campaigns: MetaCampaignRow[] }>(
+    prevKey, fetcher, SWR_CONFIG
+  );
+
   return {
     campaigns: data?.campaigns ?? [],
+    previousCampaigns: prevData?.campaigns ?? [],
     error,
     isLoading: isLoading || isValidating,
     refresh,

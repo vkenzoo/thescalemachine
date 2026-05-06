@@ -26,6 +26,8 @@ interface Metric {
   label: string;
   value: string;
   delta?: number;
+  /** true = subir é bom (verde); false = subir é ruim (vermelho); undefined = neutro (cinza) */
+  goodIsUp?: boolean;
   spark?: number[];
   tooltip?: string;
 }
@@ -96,8 +98,11 @@ export function MetricCards({ metrics, loading }: { metrics: Metric[]; loading?:
   );
 }
 
-function Card({ label, value, delta, spark, tooltip, loading }: Metric & { loading?: boolean }) {
-  const positive = (delta ?? 0) >= 0;
+function Card({ label, value, delta, goodIsUp, spark, tooltip, loading }: Metric & { loading?: boolean }) {
+  const wentUp = (delta ?? 0) >= 0;
+  // Cor semântica: subiu + bom = verde, subiu + ruim = vermelho, etc.
+  // goodIsUp undefined = neutro (cinza)
+  const isGood = goodIsUp === undefined ? null : (wentUp === goodIsUp);
   const theme = METRIC_THEME[label] ?? DEFAULT_THEME;
   const Icon = theme.icon;
   const tipText = tooltip ?? METRIC_TOOLTIPS[label];
@@ -130,14 +135,17 @@ function Card({ label, value, delta, spark, tooltip, loading }: Metric & { loadi
           ) : (
             <div className="num text-xl text-ink font-bold mt-2.5 leading-tight tracking-tight">{value}</div>
           )}
-          {delta != null && (
+          {delta != null && !loading && (
             <span
               className={cn(
                 "mt-1.5 text-2xs font-mono inline-flex items-center gap-0.5 font-medium",
-                positive ? "text-positive" : "text-negative"
+                isGood === true ? "text-positive" :
+                isGood === false ? "text-negative" :
+                "text-ink-dim"
               )}
+              title="vs período anterior"
             >
-              {positive ? <ArrowUp className="size-2.5" /> : <ArrowDown className="size-2.5" />}
+              {wentUp ? <ArrowUp className="size-2.5" /> : <ArrowDown className="size-2.5" />}
               {pct(Math.abs(delta))}
             </span>
           )}
