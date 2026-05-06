@@ -38,6 +38,26 @@ import {
 } from "@/lib/hooks/use-meta";
 import { useUserPreferences, updateUserPreferences } from "@/lib/hooks/use-preferences";
 import { postJSON } from "@/lib/api";
+import useSWR from "swr";
+
+// Helper: período → range ISO pra endpoint de atribuição
+function periodToRange(period: Period): { from: string; to: string } {
+  const now = new Date();
+  const end = now.toISOString();
+  let start = new Date(now);
+  switch (period) {
+    case "today": start.setHours(0, 0, 0, 0); break;
+    case "yesterday":
+      start.setDate(start.getDate() - 1); start.setHours(0, 0, 0, 0); break;
+    case "last_7d": start.setDate(start.getDate() - 7); break;
+    case "last_30d": start.setDate(start.getDate() - 30); break;
+    case "this_month": start.setDate(1); start.setHours(0, 0, 0, 0); break;
+    case "last_month":
+      start.setMonth(start.getMonth() - 1); start.setDate(1); start.setHours(0, 0, 0, 0); break;
+    case "maximum": start.setFullYear(start.getFullYear() - 2); break;
+  }
+  return { from: start.toISOString(), to: end };
+}
 import { Plug, AlertTriangle, X } from "lucide-react";
 
 type EditTarget = {
@@ -177,14 +197,28 @@ export default function GerenciadorPage() {
   // Custom metrics do user (formulas)
   const { metrics: customMetrics } = useCustomMetrics();
 
+  // Receita real via UTM (atribuição dos webhooks de gateway)
+  const { from, to } = React.useMemo(() => periodToRange(period), [period]);
+  const utmAttrUrl = accountId
+    ? `/api/integracoes/attribution/summary?from=${from}&to=${to}&account=${accountId}`
+    : `/api/integracoes/attribution/summary?from=${from}&to=${to}`;
+  const { data: utmAttr } = useSWR<{ totals: { revenue_cents: number; refunded_revenue_cents: number; sales: number } }>(
+    utmAttrUrl, (url) => fetch(url).then((r) => r.json()), { refreshInterval: 30_000 }
+  );
+  const utmRevenue = utmAttr?.totals
+    ? (utmAttr.totals.revenue_cents - utmAttr.totals.refunded_revenue_cents) / 100
+    : 0;
+
   // Constrói cards dinamicamente baseado em selected_metrics do user
   const selectedMetricIds = preferences?.selected_metrics ?? ["spend", "revenue", "roas", "purchases", "cpa", "ctr"];
   const metricCards = React.useMemo(() => {
     const map: Record<string, { label: string; value: string }> = {
       spend:      { label: "Investido",     value: brl(totals.spend) },
       budget:     { label: "Orçamento",     value: brl(filteredCampaigns.reduce((s, c) => s + (c.dailyBudget || 0), 0)) },
-      revenue:    { label: "Receita",       value: brlCompact(totals.revenue) },
-      roas:       { label: "ROAS",          value: totals.roas.toFixed(2) + "×" },
+      revenue:    { label: "Receita Pixel", value: brlCompact(totals.revenue) },
+      utm_revenue:{ label: "Receita UTM",   value: utmRevenue > 0 ? brlCompact(utmRevenue) : "—" },
+      roas:       { label: "ROAS Pixel",    value: totals.roas.toFixed(2) + "×" },
+      utm_roas:   { label: "ROAS UTM",      value: totals.spend > 0 && utmRevenue > 0 ? (utmRevenue / totals.spend).toFixed(2) + "×" : "—" },
       purchases:  { label: "Compras",       value: num(totals.purchases) },
       cpa:        { label: "Custo/Compra",  value: totals.cpa ? brl(totals.cpa) : "—" },
       ctr:        { label: "CTR",           value: pct(totals.ctr) },
@@ -257,7 +291,7 @@ export default function GerenciadorPage() {
       .map((id) => map[id])
       .filter(Boolean)
       .map((m) => ({ ...m, delta: 0, spark: [] }));
-  }, [selectedMetricIds, totals, filteredCampaigns, customMetrics]);
+  }, [selectedMetricIds, totals, filteredCampaigns, customMetrics, utmRevenue]);
 
   const handleSaveMetrics = async (ids: string[]) => {
     try {

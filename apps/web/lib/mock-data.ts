@@ -29,8 +29,10 @@ export const METRICS: MetricDef[] = [
   // Conversion
   { id: "purchases",   label: "Compras",            category: "conversion", format: "number", goodIsUp: true },
   { id: "cpa",         label: "Custo por Compra",   category: "conversion", format: "currency", goodIsUp: false },
-  { id: "revenue",     label: "Valor de Conversão", category: "conversion", format: "currency", goodIsUp: true },
-  { id: "roas",        label: "ROAS",               category: "conversion", format: "ratio", goodIsUp: true },
+  { id: "revenue",     label: "Receita (Pixel/CAPI)", category: "conversion", format: "currency", goodIsUp: true },
+  { id: "utm_revenue", label: "Receita Real (UTM)",  category: "conversion", format: "currency", goodIsUp: true },
+  { id: "roas",        label: "ROAS (Pixel)",        category: "conversion", format: "ratio", goodIsUp: true },
+  { id: "utm_roas",    label: "ROAS Real (UTM)",     category: "conversion", format: "ratio", goodIsUp: true },
   { id: "roi",         label: "ROI",                category: "conversion", format: "percent", goodIsUp: true },
   { id: "leads",       label: "Leads",              category: "conversion", format: "number", goodIsUp: true },
   { id: "cpl",         label: "Custo por Lead",     category: "conversion", format: "currency", goodIsUp: false },
