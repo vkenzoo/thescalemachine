@@ -51,25 +51,39 @@ const ROUTE_META: Record<string, { breadcrumb: string; title: string }> = {
   "/afiliado":           { breadcrumb: "Conta",      title: "Indique e Ganhe" },
 };
 
-export function Header() {
+export function Header({ onMobileMenu }: { onMobileMenu?: () => void } = {}) {
   const pathname = usePathname();
   const meta = ROUTE_META[pathname] ?? { breadcrumb: "Ad Manager", title: pathname };
 
   return (
-    <header className="sticky top-0 z-20 h-14 flex items-center gap-4 border-b border-line vibrancy px-6">
+    <header className="sticky top-0 z-20 h-14 flex items-center gap-3 md:gap-4 border-b border-line vibrancy px-3 md:px-6">
+      {/* Hamburger — só mobile */}
+      {onMobileMenu && (
+        <button
+          type="button"
+          onClick={onMobileMenu}
+          aria-label="Abrir menu"
+          className="md:hidden size-9 grid place-items-center rounded-md border border-line bg-bg-surface text-ink-muted hover:text-ink"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
+        </button>
+      )}
+
       {/* Breadcrumb / título — Apple usa sentence case sem caps tracked-out */}
       <div className="flex items-center gap-2 min-w-0">
-        <span className="text-xs font-medium text-ink-dim">
+        <span className="text-xs font-medium text-ink-dim hidden sm:inline">
           {meta.breadcrumb}
         </span>
-        <span className="text-ink-dim/60">/</span>
+        <span className="text-ink-dim/60 hidden sm:inline">/</span>
         <h1 className="text-sm font-semibold text-ink truncate">
           {meta.title}
         </h1>
       </div>
 
-      {/* Search global — placeholder, ⌘K */}
-      <div className="ml-auto">
+      {/* Search global — placeholder, ⌘K. Esconde em mobile */}
+      <div className="ml-auto hidden lg:block">
         <button
           type="button"
           className={cn(
@@ -85,6 +99,8 @@ export function Header() {
           </kbd>
         </button>
       </div>
+      {/* No mobile, ml-auto via spacer */}
+      <div className="ml-auto lg:hidden" />
 
       <TooltipProvider delayDuration={250}>
         {/* Privacy toggle global */}

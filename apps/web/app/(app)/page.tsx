@@ -677,7 +677,7 @@ export default function GerenciadorPage() {
     selectedAccount && selectedAccount.connection_status !== "active";
 
   return (
-    <div className="px-6 py-6 space-y-6 max-w-[1600px] mx-auto">
+    <div className="px-3 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6 max-w-[1600px] mx-auto">
       <div className="flex items-center gap-3 flex-wrap">
         <AccountSwitcher
           selectedAccountId={accountId}
@@ -715,7 +715,7 @@ export default function GerenciadorPage() {
                 personalizar métricas →
               </button>
             </div>
-            <MetricCards metrics={metricCards} />
+            <MetricCards metrics={metricCards} loading={campLoading} />
           </section>
 
           <AttributedSalesBar

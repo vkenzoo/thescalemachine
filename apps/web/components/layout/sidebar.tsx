@@ -60,9 +60,12 @@ const FOOTER: Item[] = [
   { href: "/logout",     label: "Sair",                icon: LogOut },
 ];
 
-export function Sidebar() {
+export function Sidebar({ onMobileClose }: { onMobileClose?: () => void } = {}) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = React.useState(false);
+
+  // Em mobile drawer, sempre expandida e fecha ao clicar num item
+  const isMobile = !!onMobileClose;
 
   // Persist collapse preference
   React.useEffect(() => {
@@ -83,8 +86,8 @@ export function Sidebar() {
       <aside
         className={cn(
           "relative z-30 flex h-screen flex-col shrink-0 border-r border-line vibrancy-strong",
-          "transition-[width] duration-300 ease-spring",
-          collapsed ? "w-[64px]" : "w-[240px]"
+          "transition-[width] duration-300 ease-spring bg-bg-base",
+          isMobile ? "w-[260px]" : (collapsed ? "w-[64px]" : "w-[240px]")
         )}
       >
         {/* Brand — macOS-style mais leve */}
@@ -92,7 +95,7 @@ export function Sidebar() {
           <div className="grid place-items-center size-7 rounded-lg bg-accent text-ink-inverse shrink-0 shadow-elev-1">
             <Logo className="size-3.5" />
           </div>
-          {!collapsed && (
+          {(!collapsed || isMobile) && (
             <div className="flex-1 min-w-0 animate-fade-in">
               <div className="text-sm font-semibold tracking-tight leading-none text-ink">
                 Ad Manager
@@ -106,25 +109,27 @@ export function Sidebar() {
 
         {/* Items */}
         <div className="flex-1 overflow-y-auto py-2">
-          <Group items={PRIMARY} pathname={pathname} collapsed={collapsed} />
+          <Group items={PRIMARY} pathname={pathname} collapsed={isMobile ? false : collapsed} />
           <div className="my-2 mx-3 h-px bg-line" />
-          <Group items={SECONDARY} pathname={pathname} collapsed={collapsed} />
+          <Group items={SECONDARY} pathname={pathname} collapsed={isMobile ? false : collapsed} />
         </div>
 
         {/* Footer */}
         <div className="py-2 border-t border-line">
-          <Group items={FOOTER} pathname={pathname} collapsed={collapsed} muted />
+          <Group items={FOOTER} pathname={pathname} collapsed={isMobile ? false : collapsed} muted />
         </div>
 
-        {/* Collapse toggle — botão sutil estilo Finder */}
-        <button
-          type="button"
-          onClick={toggle}
-          aria-label={collapsed ? "Expandir menu" : "Recolher menu"}
-          className="absolute -right-3 top-[52px] size-6 rounded-full border border-line bg-bg-surface text-ink-muted hover:text-ink hover:bg-bg-elevated shadow-elev-1 transition-all duration-200 grid place-items-center cursor-pointer"
-        >
-          {collapsed ? <PanelLeftOpen className="size-3" /> : <PanelLeftClose className="size-3" />}
-        </button>
+        {/* Collapse toggle — só desktop */}
+        {!isMobile && (
+          <button
+            type="button"
+            onClick={toggle}
+            aria-label={collapsed ? "Expandir menu" : "Recolher menu"}
+            className="absolute -right-3 top-[52px] size-6 rounded-full border border-line bg-bg-surface text-ink-muted hover:text-ink hover:bg-bg-elevated shadow-elev-1 transition-all duration-200 grid place-items-center cursor-pointer"
+          >
+            {collapsed ? <PanelLeftOpen className="size-3" /> : <PanelLeftClose className="size-3" />}
+          </button>
+        )}
       </aside>
     </TooltipProvider>
   );

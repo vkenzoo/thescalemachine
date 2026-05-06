@@ -80,7 +80,7 @@ export type Period = "today" | "yesterday" | "last_7d" | "last_30d" | "this_mont
 
 export function useMetaCampaigns(accountId: string | null, period: Period = "last_30d") {
   const key = accountId ? `/api/meta/campaigns?account=${accountId}&period=${period}` : null;
-  const { data, error, isLoading, mutate: refresh } = useSWR<{ campaigns: MetaCampaignRow[] }>(
+  const { data, error, isLoading, isValidating, mutate: refresh } = useSWR<{ campaigns: MetaCampaignRow[] }>(
     key,
     fetcher,
     SWR_CONFIG
@@ -88,7 +88,7 @@ export function useMetaCampaigns(accountId: string | null, period: Period = "las
   return {
     campaigns: data?.campaigns ?? [],
     error,
-    isLoading,
+    isLoading: isLoading || isValidating,
     refresh,
   };
 }
@@ -127,7 +127,7 @@ export interface MetaAdsetRow {
 
 export function useMetaAdsets(accountId: string | null, period: Period = "last_30d") {
   const key = accountId ? `/api/meta/adsets?account=${accountId}&period=${period}` : null;
-  const { data, error, isLoading, mutate: refresh } = useSWR<{ adsets: MetaAdsetRow[] }>(
+  const { data, error, isLoading, isValidating, mutate: refresh } = useSWR<{ adsets: MetaAdsetRow[] }>(
     key,
     fetcher,
     SWR_CONFIG
@@ -135,7 +135,7 @@ export function useMetaAdsets(accountId: string | null, period: Period = "last_3
   return {
     adsets: data?.adsets ?? [],
     error,
-    isLoading,
+    isLoading: isLoading || isValidating,
     refresh,
   };
 }
@@ -168,7 +168,7 @@ export interface MetaAdRow {
 
 export function useMetaAds(accountId: string | null, period: Period = "last_30d") {
   const key = accountId ? `/api/meta/ads?account=${accountId}&period=${period}` : null;
-  const { data, error, isLoading, mutate: refresh } = useSWR<{ ads: MetaAdRow[] }>(
+  const { data, error, isLoading, isValidating, mutate: refresh } = useSWR<{ ads: MetaAdRow[] }>(
     key,
     fetcher,
     SWR_CONFIG
@@ -176,7 +176,7 @@ export function useMetaAds(accountId: string | null, period: Period = "last_30d"
   return {
     ads: data?.ads ?? [],
     error,
-    isLoading,
+    isLoading: isLoading || isValidating,
     refresh,
   };
 }
