@@ -72,17 +72,41 @@ const STEPS: Step[] = [
   },
   {
     n: 4,
-    title: "Gere o código de acesso (token vitalício)",
-    hint: "30 segundos",
+    title: "Gere o token vitalício do Usuário do Sistema",
+    hint: "1 minuto",
     body: (
       <>
-        Com o usuário do sistema selecionado, clique em{" "}
-        <strong className="text-ink">Gerar novo token</strong>. Escolha{" "}
-        <strong className="text-ink">o app que você criou no passo 1</strong>,
-        validade <strong className="text-ink">Nunca</strong>, e marque as 2 permissões:{" "}
-        <span className="font-mono text-ink">ads_management</span> e{" "}
-        <span className="font-mono text-ink">business_management</span>. Copie o token
-        — ele só aparece uma vez.
+        <p>
+          Ainda na tela <strong className="text-ink">Usuários do Sistema</strong>,
+          com o usuário selecionado, siga 2 etapas dentro desse painel:
+        </p>
+        <p className="mt-2">
+          <strong className="text-ink">A) Atribua suas contas de anúncios ao usuário</strong>
+          <br />
+          Clica em <strong className="text-ink">Adicionar ativos</strong> →{" "}
+          <strong className="text-ink">Contas de Anúncios</strong> → marca todas que
+          você quer gerenciar → permissão <strong className="text-ink">Acesso total</strong>{" "}
+          → Salvar. <span className="text-warning">Sem isso o token não enxerga as contas.</span>
+        </p>
+        <p className="mt-2">
+          <strong className="text-ink">B) Clica no botão "Gerar novo token"</strong>
+          <br />
+          Preenche assim:
+        </p>
+        <ul className="mt-1 ml-4 list-disc text-2xs space-y-0.5 text-ink-muted">
+          <li><strong className="text-ink">App:</strong> o app que você criou no passo 1</li>
+          <li><strong className="text-ink">Validade:</strong> Nunca</li>
+          <li><strong className="text-ink">Permissões:</strong> marca os 4 →{" "}
+            <span className="font-mono text-ink">ads_management</span>,{" "}
+            <span className="font-mono text-ink">ads_read</span>,{" "}
+            <span className="font-mono text-ink">business_management</span>,{" "}
+            <span className="font-mono text-ink">read_insights</span>
+          </li>
+        </ul>
+        <p className="mt-2 text-warning">
+          ⚠ Aparece a string longa começando com <span className="font-mono">EAA…</span> →{" "}
+          <strong>copia agora</strong>. O Meta NÃO mostra de novo. Se perder, gera outro.
+        </p>
       </>
     ),
     illustration: <TokenMockup />,
@@ -172,9 +196,9 @@ function StepCard({
 
       {isActive && (
         <div className="px-3 pb-4 pt-0 space-y-3 animate-fade-in">
-          <p className="text-xs text-ink-muted leading-relaxed pretty pl-10">
+          <div className="text-xs text-ink-muted leading-relaxed pretty pl-10">
             {step.body}
-          </p>
+          </div>
           <div className="pl-10">{step.illustration}</div>
           {step.cta && (
             <div className="pl-10">
