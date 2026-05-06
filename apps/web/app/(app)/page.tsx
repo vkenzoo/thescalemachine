@@ -40,6 +40,41 @@ import { useUserPreferences, updateUserPreferences } from "@/lib/hooks/use-prefe
 import { postJSON } from "@/lib/api";
 import useSWR from "swr";
 
+// Helper: calcula o RANGE do período ANTERIOR equivalente (client-side, espelha o servidor)
+function getPreviousRange(period: Period): { since: Date; until: Date } {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const day = (d: Date, days: number) => {
+    const out = new Date(d);
+    out.setDate(out.getDate() + days);
+    return out;
+  };
+  if (period === "today")     return { since: day(today, -1),  until: day(today, -1) };
+  if (period === "yesterday") return { since: day(today, -2),  until: day(today, -2) };
+  if (period === "last_7d")   return { since: day(today, -14), until: day(today, -8) };
+  if (period === "last_30d")  return { since: day(today, -60), until: day(today, -31) };
+  if (period === "this_month") {
+    return {
+      since: new Date(today.getFullYear(), today.getMonth() - 1, 1),
+      until: new Date(today.getFullYear(), today.getMonth(), 0),
+    };
+  }
+  if (period === "last_month") {
+    return {
+      since: new Date(today.getFullYear(), today.getMonth() - 2, 1),
+      until: new Date(today.getFullYear(), today.getMonth() - 1, 0),
+    };
+  }
+  return { since: day(today, -730), until: day(today, -366) };
+}
+
+// Formata "25 abr" / "25 abr → 01 mai" / "25 abr 24 → 01 mai 25"
+function formatRange(since: Date, until: Date): string {
+  const fmt = (d: Date) => d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }).replace(".", "");
+  if (since.getTime() === until.getTime()) return fmt(since);
+  return `${fmt(since)} → ${fmt(until)}`;
+}
+
 // Helper: período → range ISO pra endpoint de atribuição
 function periodToRange(period: Period): { from: string; to: string } {
   const now = new Date();
@@ -318,11 +353,12 @@ export default function GerenciadorPage() {
       }
     }
 
+    const prevRange = compare ? formatRange(getPreviousRange(period).since, getPreviousRange(period).until) : null;
     return selectedMetricIds
       .map((id) => map[id])
       .filter(Boolean)
-      .map((m) => ({ ...m, spark: [] }));
-  }, [selectedMetricIds, totals, filteredCampaigns, customMetrics, utmRevenue, previousTotals]);
+      .map((m) => ({ ...m, spark: [], comparedWith: prevRange }));
+  }, [selectedMetricIds, totals, filteredCampaigns, customMetrics, utmRevenue, previousTotals, compare, period]);
 
   const handleSaveMetrics = async (ids: string[]) => {
     try {
@@ -727,13 +763,27 @@ export default function GerenciadorPage() {
                 ? "border-accent bg-accent-subtle text-accent"
                 : "border-line bg-bg-surface text-ink-muted hover:border-line-strong hover:text-ink"
             }`}
-            title="Mostrar variação vs período anterior equivalente"
+            title={compare
+              ? `Comparando com ${formatRange(getPreviousRange(period).since, getPreviousRange(period).until)}`
+              : "Mostrar variação vs período anterior equivalente"}
           >
             <span className={compare ? "text-accent" : "text-ink-dim"}>↕</span>
-            Comparar
+            {compare
+              ? `vs ${formatRange(getPreviousRange(period).since, getPreviousRange(period).until)}`
+              : "Comparar"}
           </button>
         </div>
       </div>
+
+      {/* Banner explicativo quando comparação está ativa */}
+      {compare && (
+        <div className="text-2xs text-ink-muted px-1 -mt-2 flex items-center gap-1.5">
+          <span className="size-1.5 rounded-full bg-accent" />
+          Setas verdes/vermelhas comparam o período atual com{" "}
+          <strong className="text-ink">{formatRange(getPreviousRange(period).since, getPreviousRange(period).until)}</strong>
+          {" "}(mesma duração, deslocada pra trás).
+        </div>
+      )}
 
       {connectionInvalid ? (
         <EmptyState

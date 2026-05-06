@@ -28,6 +28,8 @@ interface Metric {
   delta?: number;
   /** true = subir é bom (verde); false = subir é ruim (vermelho); undefined = neutro (cinza) */
   goodIsUp?: boolean;
+  /** Texto da janela com que estamos comparando, ex: "25 abr → 01 mai" */
+  comparedWith?: string | null;
   spark?: number[];
   tooltip?: string;
 }
@@ -98,7 +100,7 @@ export function MetricCards({ metrics, loading }: { metrics: Metric[]; loading?:
   );
 }
 
-function Card({ label, value, delta, goodIsUp, spark, tooltip, loading }: Metric & { loading?: boolean }) {
+function Card({ label, value, delta, goodIsUp, comparedWith, spark, tooltip, loading }: Metric & { loading?: boolean }) {
   const wentUp = (delta ?? 0) >= 0;
   // Cor semântica: subiu + bom = verde, subiu + ruim = vermelho, etc.
   // goodIsUp undefined = neutro (cinza)
@@ -143,10 +145,13 @@ function Card({ label, value, delta, goodIsUp, spark, tooltip, loading }: Metric
                 isGood === false ? "text-negative" :
                 "text-ink-dim"
               )}
-              title="vs período anterior"
+              title={comparedWith ? `vs ${comparedWith}` : "vs período anterior"}
             >
               {wentUp ? <ArrowUp className="size-2.5" /> : <ArrowDown className="size-2.5" />}
               {pct(Math.abs(delta))}
+              {comparedWith && (
+                <span className="text-ink-dim ml-1 font-normal">vs {comparedWith}</span>
+              )}
             </span>
           )}
         </div>
