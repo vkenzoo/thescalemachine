@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { brl, num, pct } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import type { MetaAdsetRow } from "@/lib/hooks/use-meta";
+import { resolveColumns, DEFAULT_COLUMNS } from "@/lib/gerenciador/column-defs";
 
 interface Props {
   rows: MetaAdsetRow[];
@@ -39,6 +40,8 @@ interface Props {
   onSelectionChange?: React.Dispatch<React.SetStateAction<Set<string>>>;
   onBulkAction?: (count: number) => void;
   onBulkRun?: (action: "pause" | "activate" | "delete", ids: string[]) => void;
+  /** Colunas dinâmicas (selecionadas pelo user) */
+  columns?: string[];
 }
 
 export function AdSetTable({
@@ -50,7 +53,10 @@ export function AdSetTable({
   onSelectionChange,
   onBulkAction,
   onBulkRun,
+  columns = [],
 }: Props) {
+  const effectiveCols = columns.length > 0 ? columns : DEFAULT_COLUMNS;
+  const dynamicCols = React.useMemo(() => resolveColumns(effectiveCols), [effectiveCols]);
   const [internalSelected, setInternalSelected] = React.useState<Set<string>>(new Set());
   const selected = selectedProp ?? internalSelected;
   const setSelected = onSelectionChange ?? setInternalSelected;
@@ -119,12 +125,9 @@ export function AdSetTable({
                 <Th className="w-9 px-1" />
                 <Th>Conjunto</Th>
                 <Th>Campanha</Th>
-                <Th className="text-right">Orçamento</Th>
-                <Th className="text-right">Investido</Th>
-                <Th className="text-right">Compras</Th>
-                <Th className="text-right">CPA</Th>
-                <Th className="text-right">ROAS</Th>
-                <Th className="text-right">CTR</Th>
+                {dynamicCols.map((col) => (
+                  <Th key={col.id} className="text-right">{col.header}</Th>
+                ))}
                 <Th>Otimização</Th>
                 <Th>Targeting</Th>
                 <Th className="w-10" />
@@ -180,30 +183,29 @@ export function AdSetTable({
                     <Td className="text-ink-muted truncate max-w-[200px]">
                       <Private>{r.campaignName}</Private>
                     </Td>
-                    <Td className="text-right num">
-                      {hasOwnBudget ? (
-                        <button
-                          type="button"
-                          onClick={() => onRowAction?.(r.id, "edit-budget")}
-                          className="inline-flex items-center gap-1.5 text-positive hover:underline cursor-pointer font-medium"
-                          aria-label="Editar orçamento do conjunto"
-                        >
-                          {r.dailyBudget > 0 ? `${brl(r.dailyBudget)}/d` : brl(r.lifetimeBudget)}
-                          <Pencil className="size-3" />
-                        </button>
-                      ) : (
-                        <span className="text-ink-dim">CBO</span>
-                      )}
-                    </Td>
-                    <Td className="text-right num text-ink font-medium">{brl(r.spend)}</Td>
-                    <Td className="text-right num">{num(r.purchases)}</Td>
-                    <Td className="text-right num">
-                      {r.cpa > 0 ? brl(r.cpa) : <span className="text-ink-dim">—</span>}
-                    </Td>
-                    <Td className="text-right num">
-                      {r.roas > 0 ? <span className="text-positive font-medium">{r.roas.toFixed(2)}×</span> : <span className="text-ink-dim">—</span>}
-                    </Td>
-                    <Td className="text-right num">{pct(r.ctr)}</Td>
+                    {dynamicCols.map((col) => {
+                      // Override: orçamento de adset com budget próprio é editável
+                      if (col.id === "budget") {
+                        return (
+                          <Td key={col.id} className="text-right num">
+                            {hasOwnBudget ? (
+                              <button
+                                type="button"
+                                onClick={() => onRowAction?.(r.id, "edit-budget")}
+                                className="inline-flex items-center gap-1.5 text-positive hover:underline cursor-pointer font-medium"
+                                aria-label="Editar orçamento do conjunto"
+                              >
+                                {r.dailyBudget > 0 ? `${brl(r.dailyBudget)}/d` : brl(r.lifetimeBudget)}
+                                <Pencil className="size-3" />
+                              </button>
+                            ) : (
+                              <span className="text-ink-dim">CBO</span>
+                            )}
+                          </Td>
+                        );
+                      }
+                      return <Td key={col.id} className="text-right num">{col.format(r)}</Td>;
+                    })}
                     <Td>
                       <Badge tone="neutral" size="xs">
                         {r.optimizationGoal?.replace(/_/g, " ").toLowerCase() ?? "—"}

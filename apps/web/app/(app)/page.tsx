@@ -866,6 +866,7 @@ export default function GerenciadorPage() {
               ) : (
                 <AdSetTable
                   rows={filteredAdsets}
+                  columns={preferences?.selected_columns}
                   onRowAction={handleAdsetAction}
                   onDrillDown={handleDrillAdset}
                   accountId={accountId}
@@ -905,6 +906,7 @@ export default function GerenciadorPage() {
               ) : (
                 <AdTable
                   rows={filteredAds}
+                  columns={preferences?.selected_columns}
                   onRowAction={handleAdAction}
                   accountId={accountId}
                   selected={selectedAds}

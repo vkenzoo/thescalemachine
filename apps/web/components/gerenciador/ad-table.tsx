@@ -29,6 +29,7 @@ import { Button } from "@/components/ui/button";
 import { brl, num, pct } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import type { MetaAdRow } from "@/lib/hooks/use-meta";
+import { resolveColumns, DEFAULT_COLUMNS } from "@/lib/gerenciador/column-defs";
 
 interface Props {
   rows: MetaAdRow[];
@@ -39,6 +40,8 @@ interface Props {
   onSelectionChange?: React.Dispatch<React.SetStateAction<Set<string>>>;
   onBulkAction?: (count: number) => void;
   onBulkRun?: (action: "pause" | "activate" | "delete", ids: string[]) => void;
+  /** Colunas dinâmicas (selecionadas pelo user) */
+  columns?: string[];
 }
 
 export function AdTable({
@@ -48,9 +51,12 @@ export function AdTable({
   selected: selectedProp,
   onSelectionChange,
   onBulkAction,
+  columns = [],
   onBulkRun,
 }: Props) {
   const [internalSelected, setInternalSelected] = React.useState<Set<string>>(new Set());
+  const effectiveCols = columns.length > 0 ? columns : DEFAULT_COLUMNS;
+  const dynamicCols = React.useMemo(() => resolveColumns(effectiveCols), [effectiveCols]);
   const selected = selectedProp ?? internalSelected;
   const setSelected = onSelectionChange ?? setInternalSelected;
 
@@ -119,14 +125,9 @@ export function AdTable({
                 <Th>Anúncio</Th>
                 <Th>Conjunto · Campanha</Th>
                 <Th>Tipo</Th>
-                <Th className="text-right">Investido</Th>
-                <Th className="text-right">Impressões</Th>
-                <Th className="text-right">CTR</Th>
-                <Th className="text-right">CPC</Th>
-                <Th className="text-right">CPM</Th>
-                <Th className="text-right">Compras</Th>
-                <Th className="text-right">CPA</Th>
-                <Th className="text-right">Frequência</Th>
+                {dynamicCols.map((col) => (
+                  <Th key={col.id} className="text-right">{col.header}</Th>
+                ))}
                 <Th className="w-10" />
               </tr>
             </thead>
@@ -177,20 +178,19 @@ export function AdTable({
                         {r.creativeType === "video" ? "Vídeo" : r.creativeType === "image" ? "Imagem" : "—"}
                       </Badge>
                     </Td>
-                    <Td className="text-right num text-ink font-medium">{brl(r.spend)}</Td>
-                    <Td className="text-right num">{num(r.impressions)}</Td>
-                    <Td className="text-right num">{pct(r.ctr)}</Td>
-                    <Td className="text-right num">{r.cpc > 0 ? brl(r.cpc) : <span className="text-ink-dim">—</span>}</Td>
-                    <Td className="text-right num">{r.cpm > 0 ? brl(r.cpm) : <span className="text-ink-dim">—</span>}</Td>
-                    <Td className="text-right num">{num(r.purchases)}</Td>
-                    <Td className="text-right num">
-                      {r.cpa > 0 ? brl(r.cpa) : <span className="text-ink-dim">—</span>}
-                    </Td>
-                    <Td className="text-right num">
-                      <span className={hasFrequencyAlert ? "text-negative font-medium" : "text-ink"}>
-                        {r.frequency.toFixed(2)}
-                      </span>
-                    </Td>
+                    {dynamicCols.map((col) => {
+                      // Override: frequência tem highlight quando alta
+                      if (col.id === "frequency") {
+                        return (
+                          <Td key={col.id} className="text-right num">
+                            <span className={hasFrequencyAlert ? "text-negative font-medium" : "text-ink"}>
+                              {r.frequency.toFixed(2)}
+                            </span>
+                          </Td>
+                        );
+                      }
+                      return <Td key={col.id} className="text-right num">{col.format(r)}</Td>;
+                    })}
                     <Td className="text-right pr-3">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
