@@ -108,8 +108,8 @@ export async function GET(req: NextRequest) {
     // Merge
     const campaigns = structRes.data.map((c) => {
       const ins = insightsMap.get(c.id);
-      const purchases = parseAction(ins?.actions, ["purchase", "omni_purchase", "offsite_conversion.fb_pixel_purchase"]);
-      const revenue = parseAction(ins?.action_values, ["purchase", "omni_purchase", "offsite_conversion.fb_pixel_purchase"]);
+      const purchases = parseAction(ins?.actions, ["omni_purchase", "purchase", "offsite_conversion.fb_pixel_purchase"]);
+      const revenue = parseAction(ins?.action_values, ["omni_purchase", "purchase", "offsite_conversion.fb_pixel_purchase"]);
       const leads = parseAction(ins?.actions, ["lead", "offsite_conversion.fb_pixel_lead"]);
       const messages = parseAction(ins?.actions, ["onsite_conversion.messaging_first_reply", "onsite_conversion.total_messaging_connection"]);
       const igVisits = parseAction(ins?.actions, ["onsite_conversion.ig_profile_visit", "ig_profile_visit"]);
@@ -171,11 +171,22 @@ export async function GET(req: NextRequest) {
   }
 }
 
+/**
+ * Pega o valor da PRIMEIRA action_type da lista que existir.
+ *
+ * IMPORTANTE: tipos como `purchase` e `omni_purchase` se sobrepõem
+ * (`omni_purchase` = total deduplicado web+app+offline; é o que o Meta
+ * Ads Manager mostra como "Compras" / "Valor de conversões em compras").
+ * Somar todos resulta em contagem duplicada — preferimos o mais agregado
+ * disponível e ignoramos os outros.
+ *
+ * Ordem dos `types` deve ser: mais agregado primeiro, fallbacks depois.
+ */
 function parseAction(actions: { action_type: string; value: string }[] | undefined, types: string[]): number {
   if (!actions) return 0;
-  let total = 0;
-  for (const a of actions) {
-    if (types.includes(a.action_type)) total += parseFloat(a.value || "0");
+  for (const t of types) {
+    const a = actions.find((x) => x.action_type === t);
+    if (a) return parseFloat(a.value || "0");
   }
-  return total;
+  return 0;
 }

@@ -122,7 +122,7 @@ export async function GET(req: NextRequest) {
 
     const ads = filtered.map((a) => {
       const ins = insightsMap.get(a.id);
-      const purchases = parseAction(ins?.actions, ["purchase", "omni_purchase", "offsite_conversion.fb_pixel_purchase"]);
+      const purchases = parseAction(ins?.actions, ["omni_purchase", "purchase", "offsite_conversion.fb_pixel_purchase"]);
 
       const spend = parseFloat(ins?.spend ?? "0");
       const impressions = parseInt(ins?.impressions ?? "0");
@@ -163,14 +163,20 @@ export async function GET(req: NextRequest) {
   }
 }
 
+/**
+ * Pega valor da PRIMEIRA action_type da lista que existir.
+ * Tipos como `purchase`/`omni_purchase`/`offsite_conversion.fb_pixel_purchase`
+ * se sobrepõem (omni = total deduplicado). Somar duplica → usamos só o 1º match.
+ * Ordem dos `types`: mais agregado primeiro.
+ */
 function parseAction(
   actions: { action_type: string; value: string }[] | undefined,
   types: string[]
 ): number {
   if (!actions) return 0;
-  let total = 0;
-  for (const a of actions) {
-    if (types.includes(a.action_type)) total += parseFloat(a.value || "0");
+  for (const t of types) {
+    const a = actions.find((x) => x.action_type === t);
+    if (a) return parseFloat(a.value || "0");
   }
-  return total;
+  return 0;
 }
