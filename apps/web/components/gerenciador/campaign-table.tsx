@@ -31,26 +31,16 @@ import { cn } from "@/lib/cn";
 import { brl, brlCompact, num, pct } from "@/lib/format";
 import { useResizableColumns, ColumnResizer, type ColumnConfig } from "@/lib/use-resizable-columns";
 import type { MetaCampaignRow } from "@/lib/hooks/use-meta";
+import { COLUMN_DEFS, DEFAULT_COLUMNS, resolveColumns } from "@/lib/gerenciador/column-defs";
 
-// Larguras default — ajustadas por tipo de coluna. Persistidas em localStorage.
-const COLUMNS: ColumnConfig[] = [
-  { id: "select",    width: 36 },
-  { id: "switch",    width: 44 },
-  { id: "name",      width: 240, minWidth: 140 },
-  { id: "budget",    width: 110, minWidth: 80  },
-  { id: "spend",     width: 120, minWidth: 90  },
-  { id: "clicks",    width: 90,  minWidth: 70  },
-  { id: "cpm",       width: 90,  minWidth: 70  },
-  { id: "cpc",       width: 90,  minWidth: 70  },
-  { id: "reach",     width: 110, minWidth: 80  },
-  { id: "imp",       width: 110, minWidth: 80  },
-  { id: "ig_visits", width: 100, minWidth: 80  },
-  { id: "cp_ig",     width: 130, minWidth: 100 },
-  { id: "messages",  width: 110, minWidth: 80  },
-  { id: "cp_msg",    width: 130, minWidth: 100 },
-  { id: "ctr",       width: 80,  minWidth: 60  },
-  { id: "cp_cart",   width: 140, minWidth: 100 },
-  { id: "actions",   width: 50 },
+// Colunas fixas (sempre visíveis) — checkbox, switch, nome, ações
+const FIXED_COLUMNS_LEFT: ColumnConfig[] = [
+  { id: "select", width: 36 },
+  { id: "switch", width: 44 },
+  { id: "name",   width: 240, minWidth: 140 },
+];
+const FIXED_COLUMNS_RIGHT: ColumnConfig[] = [
+  { id: "actions", width: 50 },
 ];
 
 interface Props {
@@ -65,6 +55,8 @@ interface Props {
   /** Selection controlada — page eleva pra mostrar badge na tab */
   selected?: Set<string>;
   onSelectionChange?: React.Dispatch<React.SetStateAction<Set<string>>>;
+  /** Colunas selecionadas pelo user via ColumnPicker (ids do COLUMN_DEFS) */
+  columns?: string[];
 }
 
 type SortKey = "name" | "spend" | "roas" | "cpa" | "ctr" | "purchases" | "cpc" | "clicks" | "cpm" | "cpc" | "reach" | "impressions";
@@ -78,13 +70,24 @@ export function CampaignTable({
   accountId,
   selected: selectedProp,
   onSelectionChange,
+  columns = DEFAULT_COLUMNS,
 }: Props) {
   const [internalSelected, setInternalSelected] = React.useState<Set<string>>(new Set());
   const selected = selectedProp ?? internalSelected;
   const setSelected = onSelectionChange ?? setInternalSelected;
-  const [sortKey, setSortKey] = React.useState<SortKey>("spend");
+  const [sortKey, setSortKey] = React.useState<string>("spend");
   const [sortDir, setSortDir] = React.useState<"asc" | "desc">("desc");
-  const { widths, setWidth, reset } = useResizableColumns("gerenciador-campaigns:cols", COLUMNS);
+
+  // Resolve definições + monta lista completa pro hook de resize.
+  // Fallback pra DEFAULT_COLUMNS quando user nunca personalizou (array vazio do banco).
+  const effectiveColumnIds = columns.length > 0 ? columns : DEFAULT_COLUMNS;
+  const dynamicCols = React.useMemo(() => resolveColumns(effectiveColumnIds), [effectiveColumnIds]);
+  const allCols = React.useMemo<ColumnConfig[]>(() => [
+    ...FIXED_COLUMNS_LEFT,
+    ...dynamicCols.map((c) => ({ id: c.id, width: c.width, minWidth: 70 })),
+    ...FIXED_COLUMNS_RIGHT,
+  ], [dynamicCols]);
+  const { widths, setWidth, reset } = useResizableColumns("gerenciador-campaigns:cols-v2", allCols);
 
   const sorted = React.useMemo(() => {
     const arr = [...rows];
@@ -165,7 +168,7 @@ export function CampaignTable({
         <div className="overflow-x-auto">
           <table className="text-xs table-fixed" style={{ width: Object.values(widths).reduce((a, b) => a + b, 0) }}>
             <colgroup>
-              {COLUMNS.map((c) => (
+              {allCols.map((c) => (
                 <col key={c.id} style={{ width: widths[c.id] ?? c.width }} />
               ))}
             </colgroup>
@@ -195,43 +198,17 @@ export function CampaignTable({
                     </Tooltip>
                   </div>
                 </ResizableTh>
-                <ResizableTh widths={widths} setWidth={setWidth} colId="budget">Orçamento</ResizableTh>
-                <ResizableTh widths={widths} setWidth={setWidth} colId="spend">
-                  <SortHeader k="spend" current={sortKey} dir={sortDir} onSort={sortBy}>Investimento</SortHeader>
-                </ResizableTh>
-                <ResizableTh widths={widths} setWidth={setWidth} colId="clicks">
-                  <SortHeader k="clicks" current={sortKey} dir={sortDir} onSort={sortBy}>Cliques</SortHeader>
-                </ResizableTh>
-                <ResizableTh widths={widths} setWidth={setWidth} colId="cpm">
-                  <SortHeader k="cpm" current={sortKey} dir={sortDir} onSort={sortBy}>CPM</SortHeader>
-                </ResizableTh>
-                <ResizableTh widths={widths} setWidth={setWidth} colId="cpc">
-                  <SortHeader k="cpc" current={sortKey} dir={sortDir} onSort={sortBy}>CPC</SortHeader>
-                </ResizableTh>
-                <ResizableTh widths={widths} setWidth={setWidth} colId="reach">
-                  <SortHeader k="reach" current={sortKey} dir={sortDir} onSort={sortBy}>Alcance</SortHeader>
-                </ResizableTh>
-                <ResizableTh widths={widths} setWidth={setWidth} colId="imp">
-                  <SortHeader k="impressions" current={sortKey} dir={sortDir} onSort={sortBy}>Impressões</SortHeader>
-                </ResizableTh>
-                <ResizableTh widths={widths} setWidth={setWidth} colId="ig_visits" multiline>
-                  Visitas ao Perfil<br />do Instagram
-                </ResizableTh>
-                <ResizableTh widths={widths} setWidth={setWidth} colId="cp_ig" multiline>
-                  Custo por Visitas<br />ao Perfil do Instagram
-                </ResizableTh>
-                <ResizableTh widths={widths} setWidth={setWidth} colId="messages" multiline>
-                  Mensagens<br />Recebidas
-                </ResizableTh>
-                <ResizableTh widths={widths} setWidth={setWidth} colId="cp_msg" multiline>
-                  Custo por Mensagem<br />Recebida
-                </ResizableTh>
-                <ResizableTh widths={widths} setWidth={setWidth} colId="ctr">
-                  <SortHeader k="ctr" current={sortKey} dir={sortDir} onSort={sortBy}>CTR</SortHeader>
-                </ResizableTh>
-                <ResizableTh widths={widths} setWidth={setWidth} colId="cp_cart" multiline>
-                  Custo por Adições<br />ao Carrinho
-                </ResizableTh>
+                {dynamicCols.map((col) => (
+                  <ResizableTh key={col.id} widths={widths} setWidth={setWidth} colId={col.id}>
+                    {col.sortKey ? (
+                      <SortHeader k={col.sortKey as any} current={sortKey} dir={sortDir} onSort={(k) => sortBy(k as any)}>
+                        {col.header}
+                      </SortHeader>
+                    ) : (
+                      <span>{col.header}</span>
+                    )}
+                  </ResizableTh>
+                ))}
                 <Th className="align-bottom" />
               </tr>
             </thead>
@@ -279,34 +256,29 @@ export function CampaignTable({
                         </span>
                       )}
                     </Td>
-                    {/* ABO: orçamento vive nos conjuntos (mostra "ABO"). CBO: editável aqui. */}
-                    <CellL>
-                      {row.budgetType === "ABO" ? (
-                        <span className="text-ink-muted">ABO</span>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => onRowAction?.(row.id, "edit-budget")}
-                          className="inline-flex items-center gap-1.5 text-positive hover:underline cursor-pointer font-medium tabular-nums"
-                          aria-label="Editar orçamento da campanha"
-                        >
-                          {brl(row.dailyBudget)}
-                          <Pencil className="size-3" />
-                        </button>
-                      )}
-                    </CellL>
-                    <CellL mono>{brl(row.spend)}</CellL>
-                    <CellL mono>{num(row.clicks)}</CellL>
-                    <CellL mono>{brl(row.cpm)}</CellL>
-                    <CellL mono>{brl(row.cpc)}</CellL>
-                    <CellL mono>{num(row.reach)}</CellL>
-                    <CellL mono>{num(row.impressions)}</CellL>
-                    <CellL mono>{num(row.igVisits)}</CellL>
-                    <CellL mono>{row.igVisits > 0 ? brl(row.cpIg) : <span className="text-ink-dim">—</span>}</CellL>
-                    <CellL mono>{num(row.messages)}</CellL>
-                    <CellL mono>{row.messages > 0 ? brl(row.cpMessage) : <span className="text-ink-dim">—</span>}</CellL>
-                    <CellL mono>{pct(row.ctr)}</CellL>
-                    <CellL mono>{row.cartAdds > 0 ? brl(row.cpCart) : <span className="text-ink-dim">—</span>}</CellL>
+                    {dynamicCols.map((col) => {
+                      // Caso especial: orçamento de campanha CBO é editável (override do format default)
+                      if (col.id === "budget") {
+                        return (
+                          <CellL key={col.id}>
+                            {row.budgetType === "ABO" ? (
+                              <span className="text-ink-muted">ABO</span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => onRowAction?.(row.id, "edit-budget")}
+                                className="inline-flex items-center gap-1.5 text-positive hover:underline cursor-pointer font-medium tabular-nums"
+                                aria-label="Editar orçamento da campanha"
+                              >
+                                {brl(row.dailyBudget)}
+                                <Pencil className="size-3" />
+                              </button>
+                            )}
+                          </CellL>
+                        );
+                      }
+                      return <CellL key={col.id} mono>{col.format(row)}</CellL>;
+                    })}
                     <Td className="text-right pr-3">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -357,21 +329,19 @@ export function CampaignTable({
                     Total · {rows.length} campanhas
                   </span>
                 </Td>
-                <CellL />
-                <CellL mono>
-                  {brl(rows.reduce((s, r) => s + r.spend, 0))}
-                </CellL>
-                <CellL mono>{num(rows.reduce((s, r) => s + r.clicks, 0))}</CellL>
-                <CellL />
-                <CellL />
-                <CellL mono>{num(rows.reduce((s, r) => s + r.reach, 0))}</CellL>
-                <CellL mono>{num(rows.reduce((s, r) => s + r.impressions, 0))}</CellL>
-                <CellL mono>{num(rows.reduce((s, r) => s + r.igVisits, 0))}</CellL>
-                <CellL />
-                <CellL mono>{num(rows.reduce((s, r) => s + r.messages, 0))}</CellL>
-                <CellL />
-                <CellL />
-                <CellL />
+                {dynamicCols.map((col) => {
+                  // Soma só onde faz sentido — métricas que são absolutas (não taxas/médias)
+                  const SUMMABLE = new Set(["spend", "impressions", "reach", "clicks", "purchases", "revenue", "leads", "cart_adds", "checkouts", "messages", "ig_visits"]);
+                  if (!SUMMABLE.has(col.id)) return <CellL key={col.id} />;
+                  // Mapeia col.id → field na row
+                  const FIELD_MAP: Record<string, string> = {
+                    cart_adds: "cartAdds", ig_visits: "igVisits",
+                  };
+                  const field = FIELD_MAP[col.id] ?? col.id;
+                  const sum = rows.reduce((s, r: any) => s + (Number(r[field]) || 0), 0);
+                  // Use o format do col com uma row sintética
+                  return <CellL key={col.id} mono>{col.format({ ...rows[0], [field]: sum } as any)}</CellL>;
+                })}
                 <Td />
               </tr>
             </tfoot>
@@ -434,7 +404,7 @@ function ResizableTh({
   sticky?: boolean;
   className?: string;
 }) {
-  const defaultWidth = COLUMNS.find((c) => c.id === colId)?.width ?? 100;
+  const defaultWidth = COLUMN_DEFS[colId]?.width ?? 100;
   return (
     <th
       className={cn(

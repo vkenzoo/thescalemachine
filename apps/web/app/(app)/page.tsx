@@ -826,6 +826,7 @@ export default function GerenciadorPage() {
               ) : (
                 <CampaignTable
                   rows={filteredCampaigns}
+                  columns={preferences?.selected_columns}
                   onBulkAction={() => {
                     setBulkEditCtx({
                       kind: "campaign",
@@ -932,7 +933,15 @@ export default function GerenciadorPage() {
         </>
       )}
 
-      <ColumnPicker open={columnsOpen} onOpenChange={setColumnsOpen} />
+      <ColumnPicker
+        open={columnsOpen}
+        onOpenChange={setColumnsOpen}
+        defaultColumns={preferences?.selected_columns}
+        onSave={async (cols) => {
+          await updateUserPreferences({ selected_columns: cols });
+          await refreshPrefs();
+        }}
+      />
       <MetricsPicker
         open={metricsOpen}
         onOpenChange={setMetricsOpen}
