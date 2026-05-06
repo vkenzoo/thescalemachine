@@ -233,11 +233,11 @@ function CreateAppMockup() {
       <div className="rounded border border-line bg-bg-elevated p-2 space-y-1.5">
         <div className="flex items-center justify-between gap-2">
           <span className="text-ink-dim">App ID</span>
-          <span className="text-accent font-mono font-medium">1541435410963706</span>
+          <span className="text-accent font-mono font-medium">123456789012345</span>
         </div>
         <div className="flex items-center justify-between gap-2">
           <span className="text-ink-dim">App Secret</span>
-          <span className="text-accent font-mono font-medium">cebc0f3b7fc6a410…</span>
+          <span className="text-accent font-mono font-medium">abcdef1234…</span>
         </div>
       </div>
       <div className="text-ink-dim italic text-[10px]">
@@ -338,8 +338,8 @@ function PasteMockup() {
   return (
     <div className="rounded-md border border-line bg-bg-base p-3 text-2xs space-y-1.5">
       {[
-        { label: "App ID", value: "1541435410963706" },
-        { label: "App Secret", value: "cebc0f3b7fc6a410..." },
+        { label: "App ID", value: "123456789012345" },
+        { label: "App Secret", value: "abcdef1234567890…" },
         { label: "ID do BM", value: "1194498027652250" },
         { label: "Código de acesso", value: "EAAV57WYdXPo...lbdPM" },
       ].map((row) => (

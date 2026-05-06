@@ -202,7 +202,7 @@ export function ConnectForm() {
           step={1}
           label="App ID"
           hint="Aparece no topo da página do seu app em developers.facebook.com, em Configurações → Básico."
-          example="1541435410963706"
+          example="123456789012345"
           filled={/^\d{8,}$/.test(appId)}
         >
           <Input
@@ -220,7 +220,7 @@ export function ConnectForm() {
           step={2}
           label="App Secret"
           hint="Na mesma tela do App ID. Clique em 'Mostrar' e digite sua senha do Facebook pra revelar."
-          example="cebc0f3b7fc6a410c63486aa6a488b4a"
+          example="abcdef1234567890abcdef1234567890"
           filled={appSecret.length >= 20}
         >
           <div className="relative">
