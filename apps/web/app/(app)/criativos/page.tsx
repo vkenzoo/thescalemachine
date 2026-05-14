@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { brl, num, pct } from "@/lib/format";
-import { useMetaAccounts, useMetaAds, type MetaAccount, type Period, type MetaAdRow } from "@/lib/hooks/use-meta";
+import { useMetaAccounts, useMetaAds, type Period, type MetaAdRow } from "@/lib/hooks/use-meta";
 import { Plug, AlertTriangle, Search } from "lucide-react";
 import { Private } from "@/lib/privacy";
 import { cn } from "@/lib/cn";
@@ -34,22 +34,14 @@ const SORT_OPTIONS: { id: SortKey; label: string; dir: "desc" | "asc"; icon: any
 
 export default function CriativosPage() {
   const { accounts, isLoading: accLoading } = useMetaAccounts();
-  const [selectedAccount, setSelectedAccount] = React.useState<MetaAccount | null>(null);
+  const [accountId, setAccountId] = React.useState<string | null>(null);
   const [period, setPeriod] = React.useState<Period>("last_30d");
   const [sortKey, setSortKey] = React.useState<SortKey>("roas");
   const [activeOnly, setActiveOnly] = React.useState(true);
   const [hadSpend, setHadSpend] = React.useState(true);
   const [query, setQuery] = React.useState("");
 
-  const accountId = selectedAccount?.account_id ?? null;
   const { ads, isLoading: adsLoading, error: adsError } = useMetaAds(accountId, period);
-
-  // Auto-select primeira conta
-  React.useEffect(() => {
-    if (!selectedAccount && accounts.length > 0) {
-      setSelectedAccount(accounts[0]);
-    }
-  }, [accounts, selectedAccount]);
 
   const sortConfig = SORT_OPTIONS.find((s) => s.id === sortKey)!;
 
@@ -105,7 +97,10 @@ export default function CriativosPage() {
       />
 
       <div className="flex items-center gap-3 flex-wrap">
-        <AccountSwitcher value={selectedAccount} onChange={setSelectedAccount} accounts={accounts} loading={accLoading} />
+        <AccountSwitcher
+          selectedAccountId={accountId}
+          onSelect={(acc) => setAccountId(acc?.account_id ?? null)}
+        />
         <PeriodPicker value={period} onChange={setPeriod} />
         <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
           <SelectTrigger className="w-[200px]">
