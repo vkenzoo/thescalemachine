@@ -13,6 +13,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { decrypt } from "@/lib/crypto";
 import { PARSERS } from "@/lib/utm/parsers";
 import { resolveSaleAttribution, persistAttribution } from "@/lib/utm/attribution";
+import { captureError, captureMessage } from "@/lib/sentry";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -106,6 +107,11 @@ export async function POST(
 
   if (insertErr || !inserted) {
     console.error("[webhook] insert failed:", insertErr?.message);
+    captureError(insertErr, {
+      area: "webhook",
+      tags: { gateway },
+      extra: { event_type: sale.event_type, transaction_id: sale.external_transaction_id },
+    });
     return NextResponse.json({ error: "db_error", detail: insertErr?.message }, { status: 500 });
   }
 
@@ -140,7 +146,15 @@ export async function POST(
     utm_term: sale.utm_term,
     utm_id: sale.utm_id,
   }).then((result) => persistAttribution(supabase, inserted.id, project.user_id, result))
-    .catch((e) => console.error("[webhook] attribution failed:", e?.message));
+    .catch((e) => {
+      console.error("[webhook] attribution failed:", e?.message);
+      captureError(e, {
+        area: "resolver",
+        tags: { gateway },
+        userId: project.user_id,
+        extra: { sale_id: inserted.id },
+      });
+    });
 
   return NextResponse.json({ ok: true, sale_id: inserted.id });
 }

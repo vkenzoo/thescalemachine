@@ -11,6 +11,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { graphGet, isInvalidTokenError } from "@/lib/meta/graph-client";
+import { captureError } from "@/lib/sentry";
 import { decryptCredentials } from "@/lib/meta/conn-credentials";
 import {
   expandMetrics,
@@ -184,6 +185,11 @@ async function evaluateAlert(supabase: any, alert: Alert) {
       if (isInvalidTokenError(err)) {
         await supabase.from("meta_connections").update({ status: "invalid" }).eq("id", conn.id ?? "");
       }
+      captureError(err, {
+        area: "cron-alerts",
+        userId: alert.user_id,
+        tags: { alert_id: alert.id, account: acc.account_id },
+      });
       events.push({ alert_id: alert.id, account_id: acc.account_id, status: "failed", error: err.message });
     }
   }
