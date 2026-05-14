@@ -175,6 +175,9 @@ export interface MetaAdRow {
   frequency: number;
   purchases: number;
   cpa: number;
+  revenue: number;
+  roas: number;
+  avgTicket: number;
 }
 
 export function useMetaAds(accountId: string | null, period: Period = "last_30d") {

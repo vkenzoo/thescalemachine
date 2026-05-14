@@ -123,6 +123,7 @@ export async function GET(req: NextRequest) {
     const ads = filtered.map((a) => {
       const ins = insightsMap.get(a.id);
       const purchases = parseAction(ins?.actions, ["omni_purchase", "purchase", "offsite_conversion.fb_pixel_purchase"]);
+      const revenue = parseAction(ins?.action_values, ["omni_purchase", "purchase", "offsite_conversion.fb_pixel_purchase"]);
 
       const spend = parseFloat(ins?.spend ?? "0");
       const impressions = parseInt(ins?.impressions ?? "0");
@@ -151,6 +152,9 @@ export async function GET(req: NextRequest) {
         frequency: parseFloat(ins?.frequency ?? "0"),
         purchases,
         cpa: purchases > 0 ? spend / purchases : 0,
+        revenue,
+        roas: spend > 0 ? revenue / spend : 0,
+        avgTicket: purchases > 0 ? revenue / purchases : 0,
       };
     });
 
