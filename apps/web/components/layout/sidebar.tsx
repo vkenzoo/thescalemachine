@@ -41,7 +41,7 @@ const PRIMARY: Item[] = [
   { href: "/central",            label: "Central de Contas",   icon: LayoutDashboard },
   { href: "/saldo",              label: "Monitorar Saldo",     icon: Wallet },
   { href: "/",                   label: "Meta Ads",            icon: Megaphone },
-  { href: "/editor",             label: "Meta Ads Editor",     icon: Rocket, badge: "Flagship" },
+  { href: "/editor",             label: "Meta Ads Editor",     icon: Rocket },
   { href: "/audiences",          label: "Criar Públicos",      icon: Users2 },
   { href: "/criativos",          label: "Análise de Criativos", icon: BarChart3 },
   { href: "/integracoes",        label: "Integrações UTMs",    icon: Link2 },
