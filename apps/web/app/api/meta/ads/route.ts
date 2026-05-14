@@ -87,35 +87,42 @@ export async function GET(req: NextRequest) {
 
   try {
     // Estratégia anti-timeout pra contas grandes:
-    // 1. Insights primeiro (filtra naturalmente ads sem atividade no período)
-    // 2. Pega só os ad_ids que TIVERAM dados, busca structure só desses
-    // 3. Pula DELETED/ARCHIVED de cara via filtering
+    // 1. Insights primeiro com FILTERING NA META: spend > 0 (corta inativos)
+    // 2. Limite menor (200) — usuário ranqueia ads relevantes, não milhares
+    // 3. Filtro de IDs no /ads + creative bem reduzido (sem image_url)
+    const insightsFiltering = JSON.stringify([
+      { field: "spend", operator: "GREATER_THAN", value: 0 },
+    ]);
+
     const insightsRes = await graphGet<{ data: MetaInsight[] }>(
       token, `/${adAccount.account_id}/insights`, {
         level: "ad",
         date_preset: period,
         fields: "ad_id,spend,impressions,reach,clicks,ctr,cpc,cpm,frequency,actions,action_values",
-        limit: 500,
+        filtering: insightsFiltering,
+        limit: 200,
       }, appSecret
-    ).catch(() => ({ data: [] as MetaInsight[] }));
+    ).catch((e) => {
+      console.error("[/api/meta/ads] insights call failed:", e?.message);
+      return { data: [] as MetaInsight[] };
+    });
 
     const adIdsWithData = insightsRes.data.map((i) => i.ad_id).filter(Boolean);
 
-    // Se nenhum insight, retorna lista vazia (evita call grande à toa)
     if (adIdsWithData.length === 0) {
       return NextResponse.json({ ads: [], account_id: adAccount.account_id, period });
     }
 
-    // Filtra ads pela lista de IDs ativos. Reduz drasticamente payload.
     const filtering = JSON.stringify([
-      { field: "id", operator: "IN", value: adIdsWithData.slice(0, 500) },
+      { field: "id", operator: "IN", value: adIdsWithData.slice(0, 200) },
     ]);
 
+    // Adsets/campaigns só com IDs únicos vindos dos insights; bem menor
     const [structRes, adsetsRes, campaignsRes] = await Promise.all([
       graphGet<{ data: MetaAd[] }>(token, `/${adAccount.account_id}/ads`, {
-        fields: "id,name,status,effective_status,adset_id,campaign_id,creative{id,thumbnail_url,image_url,video_id}",
+        fields: "id,name,status,effective_status,adset_id,campaign_id,creative{thumbnail_url,video_id}",
         filtering,
-        limit: 500,
+        limit: 200,
       }, appSecret),
       graphGet<{ data: { id: string; name: string }[] }>(token, `/${adAccount.account_id}/adsets`, {
         fields: "id,name",
