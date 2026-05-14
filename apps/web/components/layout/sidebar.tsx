@@ -25,6 +25,7 @@ import {
   LogOut,
   PanelLeftClose,
   PanelLeftOpen,
+  ShieldAlert,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -65,9 +66,24 @@ const FOOTER: Item[] = [
 export function Sidebar({ onMobileClose }: { onMobileClose?: () => void } = {}) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = React.useState(false);
+  const [isAdmin, setIsAdmin] = React.useState(false);
 
   // Em mobile drawer, sempre expandida e fecha ao clicar num item
   const isMobile = !!onMobileClose;
+
+  // Detecta admin via /api/me — sidebar mostra link extra
+  React.useEffect(() => {
+    fetch("/api/me")
+      .then((r) => r.json())
+      .then((j) => setIsAdmin(!!j.user?.is_admin))
+      .catch(() => {});
+  }, []);
+
+  // Sobre o PRIMARY: copia + adiciona Admin no fim se for admin
+  const primary = React.useMemo<Item[]>(() => {
+    if (!isAdmin) return PRIMARY;
+    return [...PRIMARY, { href: "/admin", label: "Admin · Backoffice", icon: ShieldAlert, badge: "ADMIN" }];
+  }, [isAdmin]);
 
   // Persist collapse preference
   React.useEffect(() => {
@@ -111,7 +127,7 @@ export function Sidebar({ onMobileClose }: { onMobileClose?: () => void } = {}) 
 
         {/* Items */}
         <div className="flex-1 overflow-y-auto py-2">
-          <Group items={PRIMARY} pathname={pathname} collapsed={isMobile ? false : collapsed} />
+          <Group items={primary} pathname={pathname} collapsed={isMobile ? false : collapsed} />
           <div className="my-2 mx-3 h-px bg-line" />
           <Group items={SECONDARY} pathname={pathname} collapsed={isMobile ? false : collapsed} />
         </div>
