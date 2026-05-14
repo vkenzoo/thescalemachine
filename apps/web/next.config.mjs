@@ -1,5 +1,3 @@
-import { withSentryConfig } from "@sentry/nextjs";
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -53,16 +51,4 @@ const nextConfig = {
   },
 };
 
-// Wrap com Sentry — só efetiva se SENTRY_DSN estiver configurado em prod.
-// Em dev/local sem DSN, é no-op (não envia nada, não polui logs).
-export default withSentryConfig(nextConfig, {
-  silent: true,                           // sem logs de upload de sourcemap durante build
-  org: process.env.SENTRY_ORG,
-  project: process.env.SENTRY_PROJECT,
-  authToken: process.env.SENTRY_AUTH_TOKEN,
-  // Sourcemaps = stack traces legíveis no Sentry (linha exata do erro)
-  widenClientFileUpload: true,
-  // Mascara erros do bundle (não inclui código fonte no JS público)
-  hideSourceMaps: true,
-  disableLogger: true,
-});
+export default nextConfig;

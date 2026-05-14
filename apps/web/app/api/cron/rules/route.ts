@@ -20,7 +20,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { graphGet, graphPost, GraphError, isInvalidTokenError } from "@/lib/meta/graph-client";
-import { captureError } from "@/lib/sentry";
+import { logError } from "@/lib/audit";
 import { decryptCredentials } from "@/lib/meta/conn-credentials";
 import {
   expandMetrics,
@@ -289,7 +289,7 @@ async function evaluateRule(supabase: any, rule: Rule) {
       if (isInvalidTokenError(err)) {
         await supabase.from("meta_connections").update({ status: "invalid" }).eq("id", conn.id ?? "");
       }
-      captureError(err, {
+      logError(err, {
         area: "cron-rules",
         userId: rule.user_id,
         tags: { rule_id: rule.id, account: acc.account_id },
