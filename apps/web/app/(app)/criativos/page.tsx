@@ -148,7 +148,11 @@ export default function CriativosPage() {
         <EmptyState
           icon={AlertTriangle}
           title="Erro ao buscar anúncios"
-          description={adsError.message}
+          description={
+            (adsError as any)?.detail ??
+            (adsError as any)?.message ??
+            "Tente trocar pra um período menor (ex: últimos 7 dias) — contas grandes podem dar timeout em períodos longos."
+          }
         />
       ) : adsLoading && ads.length === 0 ? (
         <div className="space-y-3">

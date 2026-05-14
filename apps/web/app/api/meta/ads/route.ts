@@ -87,9 +87,11 @@ export async function GET(req: NextRequest) {
 
   try {
     const [structRes, insightsRes, adsetsRes, campaignsRes] = await Promise.all([
+      // Pra performance: pega só fields essenciais (sem object_story_spec — pesado).
+      // Filtra também por effective_status pra reduzir payload.
       graphGet<{ data: MetaAd[] }>(token, `/${adAccount.account_id}/ads`, {
-        fields: "id,name,status,effective_status,adset_id,campaign_id,creative{id,thumbnail_url,image_url,video_id,object_story_spec}",
-        limit: 500,
+        fields: "id,name,status,effective_status,adset_id,campaign_id,creative{id,thumbnail_url,image_url,video_id}",
+        limit: 200,
       }, appSecret),
       graphGet<{ data: MetaInsight[] }>(token, `/${adAccount.account_id}/insights`, {
         level: "ad",
@@ -160,8 +162,14 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ ads, account_id: adAccount.account_id, period });
   } catch (err: any) {
+    console.error("[/api/meta/ads] graph_error:", err?.message, err?.code, err?.raw);
     return NextResponse.json(
-      { error: "graph_error", message: err.message, code: err.code },
+      {
+        error: "graph_error",
+        message: err.message ?? "Erro desconhecido na Graph API",
+        code: err.code ?? null,
+        detail: err.raw?.error_user_msg ?? err.raw?.message ?? null,
+      },
       { status: 500 }
     );
   }
