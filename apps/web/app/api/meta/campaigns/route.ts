@@ -213,8 +213,14 @@ export async function GET(req: NextRequest) {
       cached: false,
     });
   } catch (err: any) {
+    console.error("[/api/meta/campaigns] graph_error:", err?.message, err?.code, err?.raw);
     return NextResponse.json(
-      { error: "graph_error", message: err.message, code: err.code },
+      {
+        error: "graph_error",
+        message: err.message ?? "Erro desconhecido na Graph API",
+        code: err.code ?? null,
+        detail: err.raw?.error_user_msg ?? err.raw?.message ?? null,
+      },
       { status: 500 }
     );
   }
