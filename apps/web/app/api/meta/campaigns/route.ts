@@ -131,24 +131,40 @@ export async function GET(req: NextRequest) {
   const { token, appSecret } = decryptCredentials(conn);
 
   try {
-    // Busca estrutura + insights em paralelo
-    const [structRes, insightsRes] = await Promise.all([
-      graphGet<{ data: MetaCampaign[] }>(token, `/${adAccount.account_id}/campaigns`, {
-        fields: "id,name,status,objective,daily_budget,lifetime_budget,buying_type,bid_strategy,created_time,updated_time",
-        limit: 500,
-      }, appSecret),
-      graphGet<{ data: MetaInsight[] }>(token, `/${adAccount.account_id}/insights`, usePrevious ? {
-        level: "campaign",
-        time_range: JSON.stringify(previousRange(period)),
-        fields: "campaign_id,spend,impressions,reach,clicks,ctr,cpc,cpm,frequency,actions,action_values",
-        limit: 500,
-      } : {
-        level: "campaign",
-        date_preset: period,
-        fields: "campaign_id,spend,impressions,reach,clicks,ctr,cpc,cpm,frequency,actions,action_values",
-        limit: 500,
-      }, appSecret).catch(() => ({ data: [] as MetaInsight[] })),
+    // Estratégia anti-timeout/rate-limit pra contas grandes:
+    // 1. Insights primeiro (paginado, filtrado por spend > 0 quando faz sentido)
+    // 2. Structure só das campanhas que tiveram dados OU estão ativas (não-deleted)
+    const insightsParams = usePrevious ? {
+      level: "campaign",
+      time_range: JSON.stringify(previousRange(period)),
+      fields: "campaign_id,spend,impressions,reach,clicks,ctr,cpc,cpm,frequency,actions,action_values",
+      limit: 500,
+    } : {
+      level: "campaign",
+      date_preset: period,
+      fields: "campaign_id,spend,impressions,reach,clicks,ctr,cpc,cpm,frequency,actions,action_values",
+      limit: 500,
+    };
+
+    const insightsRes = await graphGet<{ data: MetaInsight[] }>(
+      token, `/${adAccount.account_id}/insights`, insightsParams, appSecret
+    ).catch((e) => {
+      console.error("[/api/meta/campaigns] insights failed:", e?.message, e?.code);
+      return { data: [] as MetaInsight[] };
+    });
+
+    // Filtra campanhas DELETED/ARCHIVED do payload (reduz drasticamente)
+    const structFiltering = JSON.stringify([
+      { field: "effective_status", operator: "IN", value: ["ACTIVE","PAUSED","WITH_ISSUES","CAMPAIGN_PAUSED","PENDING_REVIEW","DISAPPROVED","PREAPPROVED","PENDING_BILLING_INFO","ARCHIVED"] },
     ]);
+
+    const structRes = await graphGet<{ data: MetaCampaign[] }>(
+      token, `/${adAccount.account_id}/campaigns`, {
+        fields: "id,name,status,objective,daily_budget,lifetime_budget,buying_type,bid_strategy,created_time,updated_time",
+        filtering: structFiltering,
+        limit: 200,
+      }, appSecret
+    );
 
     // Index insights por campaign_id
     const insightsMap = new Map<string, MetaInsight>();
